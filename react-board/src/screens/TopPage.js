@@ -20,6 +20,18 @@ import {
 } from "react-router-dom";
 import DetailPage from "./DetailPage";
 
+import * as firebase from "firebase/app";
+import { firebaseConfig } from "./../firebaseConfig";
+
+firebase.initializeApp(firebaseConfig);
+
+require("firebase/firestore");
+let db = firebase.firestore();
+
+//It is a portfolio so create user id with random function.
+//const userId = Math.random();
+const user = "DemoUser";
+
 const useStyles = makeStyles(theme => ({
   root: {
     "& > *": {
@@ -44,13 +56,26 @@ function TopPage() {
   const [boards, setboards] = useState([]);
   const [newTitle, setnewTitle] = useState("");
   const [countId, setcountId] = useState(1);
+  const [docRefId, setdocRefId] = useState(1);
 
   const handleClickSave = title => {
-    const tmpBoards = [...boards, { Id: countId, Title: title }];
+    const tmpBoard = { Type: "Board", Id: countId, Title: title };
+    const tmpBoards = [...boards, tmpBoard];
     console.log("b");
     if (title != "") {
       setboards(tmpBoards);
       setcountId(countId + 1);
+
+      db.collection("Board")
+        .add(tmpBoard)
+        .then(function(docRef) {
+          console.log("Document written with ID: ", docRef.id);
+          setdocRefId(docRef.id);
+        })
+        .catch(function(error) {
+          console.error("Error adding document: ", error);
+        });
+
       console.log(tmpBoards);
     }
   };
@@ -78,7 +103,7 @@ function TopPage() {
             </div>
           </Paper>
           {boards.map(board => (
-            <div onClick={() => history.push("/DetailPage/")}>
+            <div onClick={() => history.push("/DetailPage/" + docRefId)}>
               <Board title={board.Title} key={board.Id} />
             </div>
           ))}
@@ -97,7 +122,7 @@ export default function TopPageRouter() {
           <Route path="/" exact>
             <TopPage />
           </Route>
-          <Route path="/DetailPage" exact>
+          <Route path="/DetailPage/:Id" exact>
             <DetailPage />
           </Route>
         </Switch>

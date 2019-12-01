@@ -13,8 +13,7 @@ const useStyles = makeStyles(theme => ({
     display: "inline-flex"
   },
   checkBox: {
-    right: "5%",
-    position: "fixed"
+    position: "inherit"
   }
 }));
 
