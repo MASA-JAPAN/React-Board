@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { makeStyles } from "@material-ui/core/styles";
+import { makeStyles, emphasize } from "@material-ui/core/styles";
 import Board from "./../components/Board";
 import BoardList from "./../components/BoardList";
 import {
@@ -28,7 +28,8 @@ const useStyles = makeStyles(theme => ({
   },
   board: {
     width: "fit-content",
-    color: "rgb(0, 0, 0)"
+    color: "rgb(0, 0, 0)",
+    display: "flex"
   },
   boardList: {
     paddingTop: "10px",
@@ -36,6 +37,18 @@ const useStyles = makeStyles(theme => ({
   },
   paper: {
     padding: theme.spacing(3, 2)
+  },
+  detailList: {
+    display: "flex"
+  },
+  detailLists: {
+    display: "flex"
+  },
+  newInput: {
+    paddingTop: "10px",
+    paddingBottom: "6px",
+    paddingRight: "10px",
+    paddingLeft: "10px"
   }
 }));
 
@@ -44,25 +57,31 @@ export default function DetailPage() {
   const [title, set_title] = useState("");
   const [newFlag, setNewFlag] = useState(false);
   const [boardDetails, setBoardDetails] = useState([]);
+  const [boardDetailContents, setBoardDetailContents] = useState([]);
+  const [loaded, setLoaded] = useState(false);
   const classes = useStyles();
   const history = useHistory();
   let { Id } = useParams();
   console.log(Id);
 
-  useEffect(() => {
-    retrieveAndSetBoardDetails();
-  });
-
   let db = firebase.firestore();
-
-  db.collection("Board")
-    .doc(Id)
-    .get()
-    .then(querySnapshot => {
-      console.log("a");
-      setdocId(querySnapshot.id);
-      set_title(querySnapshot.data().Title);
-    });
+  useEffect(() => {
+    if (!loaded) {
+      retrieveAndSetBoardDetails();
+      retrieveAndSetBoardDetailContent();
+      console.log("boardDetailContents:" + boardDetailContents);
+      db.collection("Board")
+        .doc(Id)
+        .get()
+        .then(querySnapshot => {
+          console.log("aaa");
+          setdocId(querySnapshot.id);
+          set_title(querySnapshot.data().Title);
+        });
+      setLoaded(true);
+      console.log(loaded);
+    }
+  });
 
   const handlePressEnter = e => {
     let tmpBoardDetail = {
@@ -77,10 +96,36 @@ export default function DetailPage() {
     }
   };
 
+  const handlePressEnterInBoard = e => {
+    console.log(e.target);
+    let tmpBoardDetailContent = {
+      Type: "BoardDetailContent",
+      Board: Id,
+      BoardDetail: e.target.id,
+      Value: e.target.value
+    };
+    if (e.keyCode == "13") {
+      saveBoardDetailContent(tmpBoardDetailContent);
+      retrieveAndSetBoardDetailContent();
+    }
+  };
+
   const saveBoardDetail = tmpBoardDetail => {
     setNewFlag(false);
     db.collection("BoardDetail")
       .add(tmpBoardDetail)
+      .then(function(docRef) {
+        console.log("Document written with ID: ", docRef.id);
+      })
+      .catch(function(error) {
+        console.error("Error adding document: ", error);
+      });
+  };
+
+  const saveBoardDetailContent = tmpBoardDetailContent => {
+    setNewFlag(false);
+    db.collection("BoardDetailContent")
+      .add(tmpBoardDetailContent)
       .then(function(docRef) {
         console.log("Document written with ID: ", docRef.id);
       })
@@ -97,16 +142,40 @@ export default function DetailPage() {
       .then(querySnapshot => {
         console.log("querySnapshot:" + querySnapshot);
         querySnapshot.forEach(doc => {
+          console.log("doc.id:" + doc.id);
           const tmpBoardDetail = {
             Board: doc.data().Board,
             Type: doc.data().Type,
-            Value: doc.data().Value
+            Value: doc.data().Value,
+            Id: doc.id
           };
           console.log("boardDetails:" + boardDetails.length);
           tmpBoardDetails.push(tmpBoardDetail);
         });
         setBoardDetails(tmpBoardDetails);
         console.log(tmpBoardDetails);
+      });
+  };
+
+  const retrieveAndSetBoardDetailContent = () => {
+    let tmpBoardDetailContents = [];
+    db.collection("BoardDetailContent")
+      .where("Board", "==", Id)
+      .get()
+      .then(querySnapshot => {
+        console.log("querySnapshot:" + querySnapshot);
+        querySnapshot.forEach(doc => {
+          console.log("doc.id:" + doc.id);
+          const tmpBoardDetailContent = {
+            Board: doc.data().Board,
+            BoardDetail: doc.data().BoardDetail,
+            Type: doc.data().Type,
+            Value: doc.data().Value
+          };
+          tmpBoardDetailContents.push(tmpBoardDetailContent);
+        });
+        setBoardDetailContents(tmpBoardDetailContents);
+        console.log(tmpBoardDetailContents);
       });
   };
 
@@ -119,14 +188,6 @@ export default function DetailPage() {
         <div>
           <div className={classes.board}>
             <Board title={title} />
-          </div>
-          {Number(boardDetails.length) != 0 &&
-            boardDetails.map(boardDetail => (
-              <div>
-                <Paper className={classes.paper}>{boardDetail.Value}</Paper>
-              </div>
-            ))}
-          <div className={classes.boardList}>
             {!newFlag && (
               <Button
                 variant="contained"
@@ -138,7 +199,7 @@ export default function DetailPage() {
               </Button>
             )}
             {newFlag && (
-              <Paper className={classes.paper}>
+              <Paper className={classes.newInput}>
                 <TextField
                   id="outlined-basic"
                   label="New"
@@ -148,6 +209,34 @@ export default function DetailPage() {
               </Paper>
             )}
           </div>
+          <div className={classes.detailLists}>
+            {Number(boardDetails.length) != 0 &&
+              boardDetails.map(boardDetail => (
+                <div className={classes.detailList}>
+                  <Paper className={classes.paper}>
+                    <p>{boardDetail.Value}</p>
+                    <TextField
+                      id={boardDetail.Id}
+                      label="New"
+                      variant="outlined"
+                      onKeyDown={e => handlePressEnterInBoard(e)}
+                    />
+                    {boardDetailContents.map(boardDetailContent => (
+                      <div>
+                        {boardDetail.Id == boardDetailContent.BoardDetail && (
+                          <div>
+                            <Paper>
+                              <Board title={boardDetailContent.Value} />
+                            </Paper>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </Paper>
+                </div>
+              ))}
+          </div>
+          <div className={classes.boardList}></div>
         </div>
       )}
     </div>
