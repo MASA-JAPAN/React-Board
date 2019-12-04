@@ -62,24 +62,20 @@ export default function DetailPage() {
   const classes = useStyles();
   const history = useHistory();
   let { Id } = useParams();
-  console.log(Id);
 
   let db = firebase.firestore();
   useEffect(() => {
     if (!loaded) {
       retrieveAndSetBoardDetails();
       retrieveAndSetBoardDetailContent();
-      console.log("boardDetailContents:" + boardDetailContents);
       db.collection("Board")
         .doc(Id)
         .get()
         .then(querySnapshot => {
-          console.log("aaa");
           setdocId(querySnapshot.id);
           set_title(querySnapshot.data().Title);
         });
       setLoaded(true);
-      console.log(loaded);
     }
   });
 
@@ -89,7 +85,6 @@ export default function DetailPage() {
       Board: Id,
       Value: e.target.value
     };
-    console.log(e.keyCode);
     if (e.keyCode == "13") {
       saveBoardDetail(tmpBoardDetail);
       retrieveAndSetBoardDetails();
@@ -97,7 +92,6 @@ export default function DetailPage() {
   };
 
   const handlePressEnterInBoard = e => {
-    console.log(e.target);
     let tmpBoardDetailContent = {
       Type: "BoardDetailContent",
       Board: Id,
@@ -140,20 +134,16 @@ export default function DetailPage() {
       .where("Board", "==", Id)
       .get()
       .then(querySnapshot => {
-        console.log("querySnapshot:" + querySnapshot);
         querySnapshot.forEach(doc => {
-          console.log("doc.id:" + doc.id);
           const tmpBoardDetail = {
             Board: doc.data().Board,
             Type: doc.data().Type,
             Value: doc.data().Value,
             Id: doc.id
           };
-          console.log("boardDetails:" + boardDetails.length);
           tmpBoardDetails.push(tmpBoardDetail);
         });
         setBoardDetails(tmpBoardDetails);
-        console.log(tmpBoardDetails);
       });
   };
 
@@ -163,19 +153,43 @@ export default function DetailPage() {
       .where("Board", "==", Id)
       .get()
       .then(querySnapshot => {
-        console.log("querySnapshot:" + querySnapshot);
         querySnapshot.forEach(doc => {
-          console.log("doc.id:" + doc.id);
           const tmpBoardDetailContent = {
             Board: doc.data().Board,
             BoardDetail: doc.data().BoardDetail,
             Type: doc.data().Type,
-            Value: doc.data().Value
+            Value: doc.data().Value,
+            Id: doc.id
           };
           tmpBoardDetailContents.push(tmpBoardDetailContent);
         });
         setBoardDetailContents(tmpBoardDetailContents);
-        console.log(tmpBoardDetailContents);
+      });
+  };
+
+  const handleDragStart = (e, id) => {
+    let dataTransfer = e.dataTransfer;
+    dataTransfer.setData("text/plain", id);
+  };
+
+  const handleDragOver = e => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e, id) => {
+    e.preventDefault();
+    db.collection("BoardDetailContent")
+      .doc(e.dataTransfer.getData("text/plain"))
+      .update({
+        BoardDetail: id
+      })
+      .then(function() {
+        console.log("Document successfully updated!");
+        retrieveAndSetBoardDetailContent();
+      })
+      .catch(function(error) {
+        // The document probably doesn't exist.
+        console.error("Error updating document: ", error);
       });
   };
 
@@ -212,7 +226,11 @@ export default function DetailPage() {
           <div className={classes.detailLists}>
             {Number(boardDetails.length) != 0 &&
               boardDetails.map(boardDetail => (
-                <div className={classes.detailList}>
+                <div
+                  className={classes.detailList}
+                  onDragOver={e => handleDragOver(e)}
+                  onDrop={e => handleDrop(e, boardDetail.Id)}
+                >
                   <Paper className={classes.paper}>
                     <p>{boardDetail.Value}</p>
                     <TextField
@@ -224,7 +242,12 @@ export default function DetailPage() {
                     {boardDetailContents.map(boardDetailContent => (
                       <div>
                         {boardDetail.Id == boardDetailContent.BoardDetail && (
-                          <div>
+                          <div
+                            draggable="true"
+                            onDragStart={e =>
+                              handleDragStart(e, boardDetailContent.Id)
+                            }
+                          >
                             <Paper>
                               <Board title={boardDetailContent.Value} />
                             </Paper>
