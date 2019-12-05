@@ -15,6 +15,9 @@ import EmojiObjectsIcon from "@material-ui/icons/EmojiObjects";
 import Button from "@material-ui/core/Button";
 import Paper from "@material-ui/core/Paper";
 import TextField from "@material-ui/core/TextField";
+import Typography from "@material-ui/core/Typography";
+import DeleteIcon from "@material-ui/icons/Delete";
+import Grid from "@material-ui/core/Grid";
 
 import * as firebase from "firebase/app";
 import { firebaseConfig } from "./../firebaseConfig";
@@ -49,6 +52,11 @@ const useStyles = makeStyles(theme => ({
     paddingBottom: "6px",
     paddingRight: "10px",
     paddingLeft: "10px"
+  },
+  delete: {
+    position: "absolute",
+    right: "20px",
+    bottom: "20px"
   }
 }));
 
@@ -177,6 +185,7 @@ export default function DetailPage() {
   };
 
   const handleDrop = (e, id) => {
+    console.log(e.dataTransfer.getData("text/plain"));
     e.preventDefault();
     db.collection("BoardDetailContent")
       .doc(e.dataTransfer.getData("text/plain"))
@@ -193,46 +202,81 @@ export default function DetailPage() {
       });
   };
 
+  const handleDropToDelete = e => {
+    e.preventDefault();
+    db.collection("BoardDetailContent")
+      .doc(e.dataTransfer.getData("text/plain"))
+      .delete()
+      .then(function() {
+        console.log("Document successfully deleted!");
+        retrieveAndSetBoardDetailContent();
+      })
+      .catch(function(error) {
+        // The document probably doesn't exist.
+        console.error("Error deleting document: ", error);
+      });
+    db.collection("BoardDetail")
+      .doc(e.dataTransfer.getData("text/plain"))
+      .delete()
+      .then(function() {
+        console.log("Document successfully deleted!");
+        retrieveAndSetBoardDetails();
+      })
+      .catch(function(error) {
+        // The document probably doesn't exist.
+        console.error("Error deleting document: ", error);
+      });
+  };
+
   return (
     <div className={classes.root}>
       <Fab color="primary" aria-label="add" onClick={() => history.push("/")}>
         <EmojiObjectsIcon />
       </Fab>
-      {title != "" && (
-        <div>
-          <div className={classes.board}>
-            <Board title={title} />
-            {!newFlag && (
-              <Button
-                variant="contained"
-                color="primary"
-                size="large"
-                onClick={() => setNewFlag(true)}
+      <Grid container spacing={3}>
+        <Grid item xs={12}>
+          {title != "" && (
+            <div>
+              <div className={classes.board}>
+                <Board title={title} />
+                {!newFlag && (
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    size="large"
+                    onClick={() => setNewFlag(true)}
+                  >
+                    New
+                  </Button>
+                )}
+                {newFlag && (
+                  <Paper className={classes.newInput}>
+                    <TextField
+                      id="outlined-basic"
+                      label="New"
+                      variant="outlined"
+                      onKeyDown={e => handlePressEnter(e)}
+                    />
+                  </Paper>
+                )}
+              </div>
+            </div>
+          )}
+        </Grid>
+        {Number(boardDetails.length) != 0 &&
+          boardDetails.map(boardDetail => (
+            <Grid item xs={2}>
+              <div
+              //draggable="true"
+              //onDragStart={e => handleDragStart(e, boardDetail.Id)}
               >
-                New
-              </Button>
-            )}
-            {newFlag && (
-              <Paper className={classes.newInput}>
-                <TextField
-                  id="outlined-basic"
-                  label="New"
-                  variant="outlined"
-                  onKeyDown={e => handlePressEnter(e)}
-                />
-              </Paper>
-            )}
-          </div>
-          <div className={classes.detailLists}>
-            {Number(boardDetails.length) != 0 &&
-              boardDetails.map(boardDetail => (
                 <div
-                  className={classes.detailList}
                   onDragOver={e => handleDragOver(e)}
                   onDrop={e => handleDrop(e, boardDetail.Id)}
                 >
                   <Paper className={classes.paper}>
                     <p>{boardDetail.Value}</p>
+
                     <TextField
                       id={boardDetail.Id}
                       label="New"
@@ -257,11 +301,16 @@ export default function DetailPage() {
                     ))}
                   </Paper>
                 </div>
-              ))}
-          </div>
-          <div className={classes.boardList}></div>
-        </div>
-      )}
+              </div>
+            </Grid>
+          ))}
+      </Grid>
+      <div
+        onDragOver={e => handleDragOver(e)}
+        onDrop={e => handleDropToDelete(e)}
+      >
+        <DeleteIcon style={{ fontSize: 100 }} className={classes.delete} />
+      </div>
     </div>
   );
 }
