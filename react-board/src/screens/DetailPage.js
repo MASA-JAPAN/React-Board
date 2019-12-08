@@ -18,6 +18,7 @@ import TextField from "@material-ui/core/TextField";
 import Typography from "@material-ui/core/Typography";
 import DeleteIcon from "@material-ui/icons/Delete";
 import Grid from "@material-ui/core/Grid";
+import CloseIcon from "@material-ui/icons/Close";
 
 import * as firebase from "firebase/app";
 import { firebaseConfig } from "./../firebaseConfig";
@@ -33,6 +34,9 @@ const useStyles = makeStyles(theme => ({
     width: "fit-content",
     color: "rgb(0, 0, 0)",
     display: "flex"
+  },
+  board2: {
+    padding: "10px"
   },
   boardList: {
     paddingTop: "10px",
@@ -57,6 +61,21 @@ const useStyles = makeStyles(theme => ({
     position: "absolute",
     right: "20px",
     bottom: "20px"
+  },
+  closeButton: {
+    right: "-110px",
+    top: "35px"
+  },
+  closeButton2: {
+    right: "-130px",
+    top: "20px"
+  },
+  newButton: {
+    height: "110px",
+    top: "55px"
+  },
+  newInput: {
+    height: "fit-content"
   }
 }));
 
@@ -91,7 +110,8 @@ export default function DetailPage() {
     let tmpBoardDetail = {
       Type: "BoardDetail",
       Board: Id,
-      Value: e.target.value
+      Value: e.target.value,
+      LastmodifiedDateTime: Date.now()
     };
     if (e.keyCode == "13") {
       saveBoardDetail(tmpBoardDetail);
@@ -104,16 +124,17 @@ export default function DetailPage() {
       Type: "BoardDetailContent",
       Board: Id,
       BoardDetail: e.target.id,
-      Value: e.target.value
+      Value: e.target.value,
+      LastmodifiedDateTime: Date.now()
     };
     if (e.keyCode == "13") {
       saveBoardDetailContent(tmpBoardDetailContent);
       retrieveAndSetBoardDetailContent();
+      e.target.value = "";
     }
   };
 
   const saveBoardDetail = tmpBoardDetail => {
-    setNewFlag(false);
     db.collection("BoardDetail")
       .add(tmpBoardDetail)
       .then(function(docRef) {
@@ -140,6 +161,7 @@ export default function DetailPage() {
     let tmpBoardDetails = [];
     db.collection("BoardDetail")
       .where("Board", "==", Id)
+      .orderBy("LastmodifiedDateTime")
       .get()
       .then(querySnapshot => {
         querySnapshot.forEach(doc => {
@@ -152,6 +174,7 @@ export default function DetailPage() {
           tmpBoardDetails.push(tmpBoardDetail);
         });
         setBoardDetails(tmpBoardDetails);
+        setNewFlag(false);
       });
   };
 
@@ -159,6 +182,7 @@ export default function DetailPage() {
     let tmpBoardDetailContents = [];
     db.collection("BoardDetailContent")
       .where("Board", "==", Id)
+      .orderBy("LastmodifiedDateTime")
       .get()
       .then(querySnapshot => {
         querySnapshot.forEach(doc => {
@@ -215,6 +239,7 @@ export default function DetailPage() {
         // The document probably doesn't exist.
         console.error("Error deleting document: ", error);
       });
+
     db.collection("BoardDetail")
       .doc(e.dataTransfer.getData("text/plain"))
       .delete()
@@ -228,82 +253,128 @@ export default function DetailPage() {
       });
   };
 
+  const handlePressClose = id => {
+    db.collection("BoardDetail")
+      .doc(id)
+      .delete()
+      .then(function() {
+        console.log("Document successfully deleted!");
+        retrieveAndSetBoardDetails();
+      })
+      .catch(function(error) {
+        // The document probably doesn't exist.
+        console.error("Error deleting document: ", error);
+      });
+    console.log(id);
+    db.collection("BoardDetailContent")
+      .where("BoardDetail", "==", id)
+      .get()
+      .then(function(querySnapshot) {
+        querySnapshot.forEach(function(doc) {
+          console.log("Document successfully deleted!");
+          doc.ref.delete();
+        });
+        retrieveAndSetBoardDetailContent();
+      })
+      .catch(function(error) {
+        // The document probably doesn't exist.
+        console.error("Error deleting document: ", error);
+      });
+  };
+
   return (
     <div className={classes.root}>
       <Fab color="primary" aria-label="add" onClick={() => history.push("/")}>
         <EmojiObjectsIcon />
       </Fab>
-      <Grid container spacing={3}>
+      <Grid container spacing={1}>
         <Grid item xs={12}>
           {title != "" && (
             <div>
               <div className={classes.board}>
                 <Board title={title} />
-                {!newFlag && (
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    size="large"
-                    onClick={() => setNewFlag(true)}
-                  >
-                    New
-                  </Button>
-                )}
-                {newFlag && (
-                  <Paper className={classes.newInput}>
-                    <TextField
-                      id="outlined-basic"
-                      label="New"
-                      variant="outlined"
-                      onKeyDown={e => handlePressEnter(e)}
-                    />
-                  </Paper>
-                )}
               </div>
             </div>
           )}
         </Grid>
         {Number(boardDetails.length) != 0 &&
           boardDetails.map(boardDetail => (
-            <Grid item xs={2}>
-              <div
-              //draggable="true"
-              //onDragStart={e => handleDragStart(e, boardDetail.Id)}
+            <div
+              onDragOver={e => handleDragOver(e)}
+              onDrop={e => handleDrop(e, boardDetail.Id)}
+              className={classes.board2}
+            >
+              <Fab
+                color="secondary"
+                aria-label="close"
+                size="small"
+                className={classes.closeButton}
+                onClick={() => handlePressClose(boardDetail.Id)}
               >
-                <div
-                  onDragOver={e => handleDragOver(e)}
-                  onDrop={e => handleDrop(e, boardDetail.Id)}
-                >
-                  <Paper className={classes.paper}>
-                    <p>{boardDetail.Value}</p>
+                <CloseIcon />
+              </Fab>
+              <Paper className={classes.paper}>
+                <p>{boardDetail.Value}</p>
 
-                    <TextField
-                      id={boardDetail.Id}
-                      label="New"
-                      variant="outlined"
-                      onKeyDown={e => handlePressEnterInBoard(e)}
-                    />
-                    {boardDetailContents.map(boardDetailContent => (
-                      <div>
-                        {boardDetail.Id == boardDetailContent.BoardDetail && (
-                          <div
-                            draggable="true"
-                            onDragStart={e =>
-                              handleDragStart(e, boardDetailContent.Id)
-                            }
-                          >
-                            <Paper>
-                              <Board title={boardDetailContent.Value} />
-                            </Paper>
-                          </div>
-                        )}
+                <TextField
+                  id={boardDetail.Id}
+                  label="New"
+                  variant="outlined"
+                  onKeyDown={e => handlePressEnterInBoard(e)}
+                />
+                {boardDetailContents.map(boardDetailContent => (
+                  <div>
+                    {boardDetail.Id == boardDetailContent.BoardDetail && (
+                      <div
+                        draggable="true"
+                        onDragStart={e =>
+                          handleDragStart(e, boardDetailContent.Id)
+                        }
+                      >
+                        <Paper>
+                          <Board title={boardDetailContent.Value} />
+                        </Paper>
                       </div>
-                    ))}
-                  </Paper>
-                </div>
-              </div>
-            </Grid>
+                    )}
+                  </div>
+                ))}
+              </Paper>
+            </div>
           ))}
+        {!newFlag && (
+          <Button
+            variant="contained"
+            color="primary"
+            size="large"
+            onClick={() => setNewFlag(true)}
+            className={classes.newButton}
+          >
+            New
+          </Button>
+        )}
+        {newFlag && (
+          <div>
+            <Fab
+              color="secondary"
+              aria-label="close"
+              size="small"
+              className={classes.closeButton2}
+              onClick={() => setNewFlag(false)}
+            >
+              <CloseIcon />
+            </Fab>
+            <Paper className={classes.paper}>
+              <Paper className={classes.newInput}>
+                <TextField
+                  id="outlined-basic"
+                  label="New"
+                  variant="outlined"
+                  onKeyDown={e => handlePressEnter(e)}
+                />
+              </Paper>
+            </Paper>
+          </div>
+        )}
       </Grid>
       <div
         onDragOver={e => handleDragOver(e)}

@@ -78,9 +78,13 @@ function TopPage() {
     }
   });
 
-  const handleClickSave = title => {
+  const handleClickSave = (title, e) => {
     if (title != "") {
-      const tmpBoard = { Type: "Board", Title: title };
+      const tmpBoard = {
+        Type: "Board",
+        Title: title,
+        LastmodifiedDateTime: Date.now()
+      };
       db.collection("Board")
         .add(tmpBoard)
         .then(function(docRef) {
@@ -90,12 +94,14 @@ function TopPage() {
         .catch(function(error) {
           console.error("Error adding document: ", error);
         });
+      e.target.value = "";
     }
   };
 
   const retrieveAndSetBoard = () => {
     let tmpBoards = [];
     db.collection("Board")
+      .orderBy("LastmodifiedDateTime")
       .get()
       .then(querySnapshot => {
         querySnapshot.forEach(doc => {
@@ -131,6 +137,32 @@ function TopPage() {
         // The document probably doesn't exist.
         console.error("Error deleting document: ", error);
       });
+    db.collection("BoardDetail")
+      .where("Board", "==", e.dataTransfer.getData("text/plain"))
+      .get()
+      .then(function(querySnapshot) {
+        querySnapshot.forEach(function(doc) {
+          console.log("Document successfully deleted!");
+          doc.ref.delete();
+        });
+      })
+      .catch(function(error) {
+        // The document probably doesn't exist.
+        console.error("Error deleting document: ", error);
+      });
+    db.collection("BoardDetailContent")
+      .where("Board", "==", e.dataTransfer.getData("text/plain"))
+      .get()
+      .then(function(querySnapshot) {
+        querySnapshot.forEach(function(doc) {
+          console.log("Document successfully deleted!");
+          doc.ref.delete();
+        });
+      })
+      .catch(function(error) {
+        // The document probably doesn't exist.
+        console.error("Error deleting document: ", error);
+      });
   };
 
   return (
@@ -139,35 +171,33 @@ function TopPage() {
         <EmojiObjectsIcon />
       </Fab>
       <Grid container spacing={1}>
-        <Grid container item xs={12} spacing={3}>
-          <div className={classes.createBoard}>
-            <Paper className={classes.root2}>
-              <div className={classes.div}>
-                <TextField
-                  label="Title"
-                  onChange={e => setnewTitle(e.target.value)}
-                />
-                <Fab
-                  color="primary"
-                  aria-label="add"
-                  onClick={() => handleClickSave(newTitle)}
-                >
-                  <SaveIcon />
-                </Fab>
-              </div>
-            </Paper>
-          </div>
-          {boards.map(board => (
-            <div
-              onClick={() => history.push("/DetailPage/" + board.Id)}
-              className={classes.board}
-              draggable="true"
-              onDragStart={e => handleDragStart(e, board.Id)}
-            >
-              <Board title={board.Title} key={board.Id} />
+        <div className={classes.createBoard}>
+          <Paper className={classes.root2}>
+            <div className={classes.div}>
+              <TextField
+                label="Title"
+                onChange={e => setnewTitle(e.target.value)}
+              />
+              <Fab
+                color="primary"
+                aria-label="add"
+                onClick={e => handleClickSave(newTitle, e)}
+              >
+                <SaveIcon />
+              </Fab>
             </div>
-          ))}
-        </Grid>
+          </Paper>
+        </div>
+        {boards.map(board => (
+          <div
+            onClick={() => history.push("/DetailPage/" + board.Id)}
+            className={classes.board}
+            draggable="true"
+            onDragStart={e => handleDragStart(e, board.Id)}
+          >
+            <Board title={board.Title} key={board.Id} />
+          </div>
+        ))}
       </Grid>
       <div onDragOver={e => handleDragOver(e)} onDrop={e => handleDrop(e)}>
         <DeleteIcon style={{ fontSize: 100 }} className={classes.delete} />
