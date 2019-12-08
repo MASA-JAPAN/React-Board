@@ -1,12 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { makeStyles, emphasize } from "@material-ui/core/styles";
+import { makeStyles } from "@material-ui/core/styles";
 import Board from "./../components/Board";
-import BoardList from "./../components/BoardList";
 import {
   BrowserRouter as Router,
-  Switch,
-  Route,
-  Link,
   useHistory,
   useParams
 } from "react-router-dom";
@@ -15,13 +11,11 @@ import EmojiObjectsIcon from "@material-ui/icons/EmojiObjects";
 import Button from "@material-ui/core/Button";
 import Paper from "@material-ui/core/Paper";
 import TextField from "@material-ui/core/TextField";
-import Typography from "@material-ui/core/Typography";
 import DeleteIcon from "@material-ui/icons/Delete";
 import Grid from "@material-ui/core/Grid";
 import CloseIcon from "@material-ui/icons/Close";
 
 import * as firebase from "firebase/app";
-import { firebaseConfig } from "./../firebaseConfig";
 
 const useStyles = makeStyles(theme => ({
   root: {
@@ -80,7 +74,6 @@ const useStyles = makeStyles(theme => ({
 }));
 
 export default function DetailPage() {
-  const [docId, setdocId] = useState("");
   const [title, set_title] = useState("");
   const [newFlag, setNewFlag] = useState(false);
   const [boardDetails, setBoardDetails] = useState([]);
@@ -99,7 +92,6 @@ export default function DetailPage() {
         .doc(Id)
         .get()
         .then(querySnapshot => {
-          setdocId(querySnapshot.id);
           set_title(querySnapshot.data().Title);
         });
       setLoaded(true);
@@ -107,27 +99,27 @@ export default function DetailPage() {
   });
 
   const handlePressEnter = e => {
-    let tmpBoardDetail = {
-      Type: "BoardDetail",
-      Board: Id,
-      Value: e.target.value,
-      LastmodifiedDateTime: Date.now()
-    };
-    if (e.keyCode == "13") {
+    if (e.keyCode == "13" && e.target.value !== "") {
+      let tmpBoardDetail = {
+        Type: "BoardDetail",
+        Board: Id,
+        Value: e.target.value,
+        LastmodifiedDateTime: Date.now()
+      };
       saveBoardDetail(tmpBoardDetail);
       retrieveAndSetBoardDetails();
     }
   };
 
   const handlePressEnterInBoard = e => {
-    let tmpBoardDetailContent = {
-      Type: "BoardDetailContent",
-      Board: Id,
-      BoardDetail: e.target.id,
-      Value: e.target.value,
-      LastmodifiedDateTime: Date.now()
-    };
-    if (e.keyCode == "13") {
+    if (e.keyCode == "13" && e.target.value !== "") {
+      let tmpBoardDetailContent = {
+        Type: "BoardDetailContent",
+        Board: Id,
+        BoardDetail: e.target.id,
+        Value: e.target.value,
+        LastmodifiedDateTime: Date.now()
+      };
       saveBoardDetailContent(tmpBoardDetailContent);
       retrieveAndSetBoardDetailContent();
       e.target.value = "";
@@ -289,7 +281,7 @@ export default function DetailPage() {
       </Fab>
       <Grid container spacing={1}>
         <Grid item xs={12}>
-          {title != "" && (
+          {title !== "" && (
             <div>
               <div className={classes.board}>
                 <Board title={title} />
@@ -297,7 +289,7 @@ export default function DetailPage() {
             </div>
           )}
         </Grid>
-        {Number(boardDetails.length) != 0 &&
+        {Number(boardDetails.length) !== 0 &&
           boardDetails.map(boardDetail => (
             <div
               onDragOver={e => handleDragOver(e)}

@@ -5,18 +5,13 @@ import EmojiObjectsIcon from "@material-ui/icons/EmojiObjects";
 import Grid from "@material-ui/core/Grid";
 import Board from "./../components/Board";
 import Paper from "@material-ui/core/Paper";
-import Typography from "@material-ui/core/Typography";
 import TextField from "@material-ui/core/TextField";
-import SaveButton from "./../components/SaveButton";
 import SaveIcon from "@material-ui/icons/Save";
 import {
   BrowserRouter as Router,
   Switch,
   Route,
-  Link,
-  useHistory,
-  useLocation,
-  useParams
+  useHistory
 } from "react-router-dom";
 import DetailPage from "./DetailPage";
 import DeleteIcon from "@material-ui/icons/Delete";
@@ -29,10 +24,6 @@ firebase.initializeApp(firebaseConfig);
 require("firebase/firestore");
 let db = firebase.firestore();
 
-//It is a portfolio so create user id with random function.
-//const userId = Math.random();
-const user = "DemoUser";
-
 const useStyles = makeStyles(theme => ({
   root: {
     "& > *": {
@@ -43,10 +34,10 @@ const useStyles = makeStyles(theme => ({
   extendedIcon: {
     marginRight: theme.spacing(1)
   },
-  root2: {
+  paper: {
     padding: theme.spacing(3, 2)
   },
-  div: {
+  inlineFlex: {
     display: "inline-flex"
   },
   createBoard: {
@@ -66,8 +57,6 @@ function TopPage() {
   const history = useHistory();
   const classes = useStyles();
   const [newTitle, setnewTitle] = useState("");
-  const [countId, setcountId] = useState(1);
-  const [docRefId, setdocRefId] = useState(1);
   const [loaded, setLoaded] = useState(false);
   const [boards, setBoards] = useState([]);
 
@@ -78,24 +67,28 @@ function TopPage() {
     }
   });
 
-  const handleClickSave = (title, e) => {
+  const handleClickSave = title => {
     if (title != "") {
-      const tmpBoard = {
-        Type: "Board",
-        Title: title,
-        LastmodifiedDateTime: Date.now()
-      };
-      db.collection("Board")
-        .add(tmpBoard)
-        .then(function(docRef) {
-          console.log("Document written with ID: ", docRef.id);
-          retrieveAndSetBoard();
-        })
-        .catch(function(error) {
-          console.error("Error adding document: ", error);
-        });
-      e.target.value = "";
+      saveBoard(title);
+      setnewTitle("");
     }
+  };
+
+  const saveBoard = title => {
+    const tmpBoard = {
+      Type: "Board",
+      Title: title,
+      LastmodifiedDateTime: Date.now()
+    };
+    db.collection("Board")
+      .add(tmpBoard)
+      .then(function(docRef) {
+        console.log("Document written with ID: ", docRef.id);
+        retrieveAndSetBoard();
+      })
+      .catch(function(error) {
+        console.error("Error adding document: ", error);
+      });
   };
 
   const retrieveAndSetBoard = () => {
@@ -172,16 +165,17 @@ function TopPage() {
       </Fab>
       <Grid container spacing={1}>
         <div className={classes.createBoard}>
-          <Paper className={classes.root2}>
-            <div className={classes.div}>
+          <Paper className={classes.paper}>
+            <div className={classes.inlineFlex}>
               <TextField
                 label="Title"
                 onChange={e => setnewTitle(e.target.value)}
+                value={newTitle}
               />
               <Fab
                 color="primary"
                 aria-label="add"
-                onClick={e => handleClickSave(newTitle, e)}
+                onClick={e => handleClickSave(newTitle)}
               >
                 <SaveIcon />
               </Fab>
